@@ -3,11 +3,12 @@ var cursors;
 var cards;
 var activeCard = null, passiveCard = null;
 var chain = {};
+var oldPos = null;
 
-var CARD_WIDTH = 36, CARD_HEIGHT = 132;
+var CARD_WIDTH = 36, CARD_HEIGHT = 132, MIN_Y_MOVE_HEIGHT = 30;
 
 window.onload = function() {
-    game = new Phaser.Game(1024, 300);
+    game = new Phaser.Game(1024, 400);
     game.state.add("PlayGame", playGame)
     game.state.start("PlayGame");
 }
@@ -94,6 +95,7 @@ playGame.prototype = {
 
 function onDragStart(e) {
   activeCard = e;
+  oldPos = { x: e.x, y: e.y };
   cards.bringToTop(e);
 }
 
@@ -119,26 +121,24 @@ function onDragEnd(e) {
       tochain.push(activeCard);
       /*当前字牌从原来链表移除*/
       removeFromChain(activeCard, fromchain);
-      /*修正显示*/
-      for (var i = tochain.length - 1; i >= 0; i--) {
-        cards.bringToTop(tochain[i]);
-      }
       activeCard.chain_id = passiveCard.chain_id;
     }
     else {
-      console.log('in chain');
-      console.log(activeCard.key, passiveCard.key);
-
       /*当前字牌从链表中分离*/
       if (Math.abs(passiveCard.x - activeCard.x) > CARD_WIDTH) {
-        console.log('seprate!');
         /*恢复当前元素的chain_id*/
         removeFromChain(activeCard, tochain, true);
       }
+      /*当前字牌在组内移动*/
       else {
-      
+        if (Math.abs(passiveCard.y - activeCard.y) > MIN_Y_MOVE_HEIGHT) {
+          swapChainCard(activeCard, passiveCard);
+        }
       }
     }
+
+    /*修正显示*/
+    adjustView(fromchain, tochain);
 
     console.log(chain);
   }
@@ -162,9 +162,65 @@ function removeFromChain(el, achain, restore) {
   achain.splice(idx, 1);
 
   if (restore) {
-    el.chain_id = el.reserve_chain_id;
+    el.chain_id = getFreeChainId(el);
     chain[el.chain_id].push(el);
   }
 }
+
+function getFreeChainId(el) {
+  var old_chain_id = el.reserve_chain_id;
+  
+  if (chain[old_chain_id].length == 0) {
+    return old_chain_id;
+  }
+
+  for (var k in chain) {
+    if (chain[k].length == 0) {
+        return k;
+    }
+  }
+}
+
+function adjustView(fromChain, toChain) {
+  for (var i = fromChain.length - 1; i >= 0; i--) {
+    var card = fromChain[i];
+    var dx = oldPos.x, dy = game.height - 40 * i - CARD_HEIGHT;
+    card.x = dx;
+    card.y = dy;
+    card.chain_idx = i;
+    cards.bringToTop(card);
+  }
+
+  if (fromChain == toChain) {
+    return;
+  }
+
+  for (var i = toChain.length - 1; i >= 0; i--) {
+    var card = toChain[i];
+    var dx = passiveCard.x, dy = game.height - 40 * i - CARD_HEIGHT;
+    console.log(card.key, dx, dy);
+    card.x = dx;
+    card.y = dy;
+    card.chain_idx = i;
+    cards.bringToTop(card);
+  }
+}
+
+function swapChainCard(lcard, rcard) {
+  console.log('swap card');
+  var t_chain_id = lcard.chain_id;
+  var t_l_card_chain_idx = lcard.chain_idx;
+  var t_r_card_chain_idx = rcard.chain_idx;
+
+  console.log(t_l_card_chain_idx, t_r_card_chain_idx);
+
+  chain[t_chain_id][t_l_card_chain_idx] = rcard;
+  chain[t_chain_id][t_r_card_chain_idx] = lcard;
+
+  adjustView(chain[t_chain_id], chain[t_chain_id]);
+}
+
+
+
 
 
