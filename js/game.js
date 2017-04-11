@@ -7,7 +7,7 @@ var chain = {};
 var CARD_WIDTH = 36, CARD_HEIGHT = 132;
 
 window.onload = function() {
-    game = new Phaser.Game(1024, 600);
+    game = new Phaser.Game(1024, 300);
     game.state.add("PlayGame", playGame)
     game.state.start("PlayGame");
 }
@@ -63,6 +63,7 @@ playGame.prototype = {
       card.input.enableDrag();
       card.id = a_card.id;
       card.chain_id = a_card.id;
+      card.reserve_chain_id = a_card.id;
       card.chain_idx = 0;
 
       card.events.onInputDown.add(onDragStart);
@@ -87,8 +88,6 @@ playGame.prototype = {
       if (passiveCard) return ;
       passiveCard = right;
       activeCard = left;
-
-      console.log(activeCard.key + ', ' + passiveCard.key);
     }, null, this);
   }
 };
@@ -99,31 +98,32 @@ function onDragStart(e) {
 }
 
 function onDragEnd(e) {
+  
   if (passiveCard && activeCard) {
-    console.log('has both target');
     /*修改链表id跟目标链表id一致*/
-    activeCard.chain_id = passiveCard.chain_id;
-    var achain = chain[passiveCard.chain_id];
-    
-    var is_in_chain = inChain(activeCard, achain);
+    var tochain = chain[passiveCard.chain_id];
+    var fromchain = chain[activeCard.chain_id];
+    var is_in_chain = inChain(activeCard, tochain);
     
     if (-1 == is_in_chain) {
-    
       console.log('not in chain');
       /*当前链表的元素个数*/
-      var len = achain.length;
+      var len = tochain.length;
       /*当前加入链表的字牌索引*/
       activeCard.chain_idx = len;
       /*修改当前移动字牌的x坐标*/
       activeCard.x = passiveCard.x;
       /*修改当前移动字牌的y坐标*/
-      activeCard.y = achain[0].y - len * 45;
-
-      achain.push(activeCard);
-
-      for (var i = achain.length - 1; i >= 0; i--) {
-        cards.bringToTop(achain[i]);
+      activeCard.y = tochain[0].y - len * 45;
+      /*当前字牌加入链表*/
+      tochain.push(activeCard);
+      /*当前字牌从原来链表移除*/
+      removeFromChain(activeCard, fromchain);
+      /*修正显示*/
+      for (var i = tochain.length - 1; i >= 0; i--) {
+        cards.bringToTop(tochain[i]);
       }
+      activeCard.chain_id = passiveCard.chain_id;
     }
     else {
       console.log('in chain');
@@ -132,12 +132,15 @@ function onDragEnd(e) {
       /*当前字牌从链表中分离*/
       if (Math.abs(passiveCard.x - activeCard.x) > CARD_WIDTH) {
         console.log('seprate!');
-        removeFromChain(activeCard, achain);
+        /*恢复当前元素的chain_id*/
+        removeFromChain(activeCard, tochain, true);
       }
       else {
       
       }
     }
+
+    console.log(chain);
   }
   
   activeCard = null;
@@ -154,10 +157,14 @@ function inChain(el, chain) {
   return -1;
 }
 
-function removeFromChain(el, chain) {
-  var idx = inChain(el, chain);
-  chain.splice(idx, 1);
-  console.log(chain);
+function removeFromChain(el, achain, restore) {
+  var idx = inChain(el, achain);
+  achain.splice(idx, 1);
+
+  if (restore) {
+    el.chain_id = el.reserve_chain_id;
+    chain[el.chain_id].push(el);
+  }
 }
 
 
