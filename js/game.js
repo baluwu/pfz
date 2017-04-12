@@ -5,7 +5,7 @@ var activeCard = null, passiveCard = null;
 var chain = {};
 var oldPos = null;
 
-var CARD_WIDTH = 40, CARD_HEIGHT = 48, MIN_Y_MOVE_HEIGHT = 40;
+var CARD_WIDTH = 53, CARD_HEIGHT = 60, MIN_Y_MOVE_HEIGHT = 50;
 
 window.onload = function() {
     game = new Phaser.Game(1280, 720);
@@ -31,12 +31,17 @@ playGame.prototype = {
       for (var j = 1; j <= 8; j++) {
         _cards.push({
           id: (i - 1) * 8 + j - 1,
-          img: (j % 2 ? 'x' : 'd') + i
+          name: (j % 2 ? 'x' : 'd') + i,
         });
       }
     }
 
-    return _cards;
+    Phaser.ArrayUtils.shuffle(_cards);
+    Phaser.ArrayUtils.shuffle(_cards);
+
+    _cards = _cards.slice(0, 19);
+
+    return sortCards(_cards);
   },
 
   _createCards: function() {
@@ -45,34 +50,45 @@ playGame.prototype = {
     cards.enableBody = true;
     
     var my_cards = this._makeCards();
-    Phaser.ArrayUtils.shuffle(my_cards);
-    Phaser.ArrayUtils.shuffle(my_cards);
-
-    var scale = 0.4;
+    
+    var scale = 0.5;
     var x = 10;
     var y = (game.height) - CARD_HEIGHT;
 
     /*给自己发20张牌*/
-    for (var i = 0; i < 2; i++) {
-      var a_card = my_cards[i];
-      var card = cards.create(x, y, a_card.img);
-      card.scale.setTo(scale, scale); 
+    for (var name in my_cards) {
+      var agroup = my_cards[name];
+      var g_y, chain_id = agroup[0].id;
 
-      //card.body.gravity.y = 1000;  
-      game.physics.arcade.enable(card);
-      card.body.collideWorldBounds = true;
-      card.inputEnabled = true;
-      card.input.enableDrag();
-      card.id = a_card.id;
-      card.chain_id = a_card.id;
-      card.reserve_chain_id = a_card.id;
-      card.chain_idx = 0;
+      for (var i = agroup.length - 1; i >= 0; i--) {
+        var a_card = agroup[i];
+        g_y = game.height - CARD_HEIGHT - i * MIN_Y_MOVE_HEIGHT;
+        var card = cards.create(x, g_y, a_card.name);
+        card.scale.setTo(scale, scale); 
 
-      card.events.onInputDown.add(onDragStart);
-      card.events.onInputUp.add(onDragEnd);
+        //card.body.gravity.y = 1000;  
+        game.physics.arcade.enable(card);
+        //card.body.collideWorldBounds = true;
+        card.inputEnabled = true;
+        card.input.enableDrag();
+        card.id = a_card.id;
+        card.chain_id = chain_id;
+        card.reserve_chain_id = chain_id
+        card.chain_idx = i;
+
+        card.events.onInputDown.add(onDragStart);
+        card.events.onInputUp.add(onDragEnd);
+
+        if (chain[chain_id]) {
+          chain[chain_id].push(card);
+        }
+        else {
+          chain[chain_id] = [card];
+        }
+
+        cards.bringToTop(card);
+      }
       x += CARD_WIDTH;
-
-      chain[a_card.id] = [card];
     }
   },
 
@@ -239,6 +255,67 @@ function adjusctPassiveCard() {
   passiveCard = chain[activeCard.chain_id][idx];
   //console.log('adjust PassiveCard to ' + passiveCard.key);
 }
+
+/**
+ * arr [{id, img}]
+ */
+function sortCards(arr) {
+  var obj = {};
+
+  /*对子成组*/
+  for (var i = 0; i <= arr.length - 1; i++) {
+
+    var el = arr[i], key = el.name;
+
+    if (!obj[key]) {
+      obj[key] = [el];
+    }
+    else {
+      obj[key].push(el);         
+    }
+  } 
+
+  /*对子成话*/
+  for (var name in obj) {
+    var group = obj[name];
+    if (group.length == 2) {
+      var flag = name.slice(0,1);
+      var expect = (flag == 'd' ? 'x' : 'd') + name.slice(1);
+      
+      if (obj[expect] && obj[expect].length == 1) {
+        group.push(obj[expect][0]);
+        delete obj[expect][0];
+        delete obj[expect];
+      }
+    }
+  }
+
+  /*单个成话*/
+
+  return obj;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
