@@ -5,10 +5,10 @@ var activeCard = null, passiveCard = null;
 var chain = {};
 var oldPos = null;
 
-var CARD_WIDTH = 36, CARD_HEIGHT = 132, MIN_Y_MOVE_HEIGHT = 30;
+var CARD_WIDTH = 40, CARD_HEIGHT = 48, MIN_Y_MOVE_HEIGHT = 40;
 
 window.onload = function() {
-    game = new Phaser.Game(1024, 400);
+    game = new Phaser.Game(1280, 720);
     game.state.add("PlayGame", playGame)
     game.state.start("PlayGame");
 }
@@ -16,10 +16,11 @@ window.onload = function() {
 var playGame = function(game) {}
 playGame.prototype = {
   preload: function() {
+    game.load.image('game_bk', 'assets/game_bk.jpg');
     for (var i = 1; i <= 10; i++) {
       for (var j = 1; j <= 2; j++) {
-        var img = (j % 2 ? 'x_' : 'd_') + i;
-        game.load.image(img, 'assets/cards/' + img + '.jpg');
+        var img = (j % 2 ? 'x' : 'd') + i;
+        game.load.image(img, 'assets/cards/' + img + '.png');
       }
     }
   },
@@ -30,7 +31,7 @@ playGame.prototype = {
       for (var j = 1; j <= 8; j++) {
         _cards.push({
           id: (i - 1) * 8 + j - 1,
-          img: (j % 2 ? 'x_' : 'd_') + i
+          img: (j % 2 ? 'x' : 'd') + i
         });
       }
     }
@@ -47,12 +48,12 @@ playGame.prototype = {
     Phaser.ArrayUtils.shuffle(my_cards);
     Phaser.ArrayUtils.shuffle(my_cards);
 
-    var scale = 0.08;
+    var scale = 0.4;
     var x = 10;
-    var y = (game.height) - 80;
+    var y = (game.height) - CARD_HEIGHT;
 
     /*给自己发20张牌*/
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 2; i++) {
       var a_card = my_cards[i];
       var card = cards.create(x, y, a_card.img);
       card.scale.setTo(scale, scale); 
@@ -77,7 +78,9 @@ playGame.prototype = {
 
   create: function() {
     game.physics.startSystem(Phaser.Physics.ARCADE);
-    game.stage.backgroundColor = "#f1f1f1";
+
+    game.add.sprite(0, 0, 'game_bk');
+    game.stage.backgroundColor = "#333";
 
     this._createCards();
     
@@ -86,7 +89,7 @@ playGame.prototype = {
 
   update: function () {
     game.physics.arcade.collide(activeCard, cards, function(left, right) {
-      if (passiveCard) return ;
+      //if (passiveCard) return ;
       passiveCard = right;
       activeCard = left;
     }, null, this);
@@ -131,7 +134,9 @@ function onDragEnd(e) {
       }
       /*当前字牌在组内移动*/
       else {
-        if (Math.abs(passiveCard.y - activeCard.y) > MIN_Y_MOVE_HEIGHT) {
+        /*修正被替换的字牌*/
+        adjusctPassiveCard();
+        if (Math.abs(passiveCard.y - activeCard.y) < (MIN_Y_MOVE_HEIGHT >> 1)) {
           swapChainCard(activeCard, passiveCard);
         }
       }
@@ -139,8 +144,10 @@ function onDragEnd(e) {
 
     /*修正显示*/
     adjustView(fromchain, tochain);
-
     console.log(chain);
+  }
+  else if (activeCard && !passiveCard) {
+    activeCard.y = oldPos.y;
   }
   
   activeCard = null;
@@ -184,40 +191,53 @@ function getFreeChainId(el) {
 function adjustView(fromChain, toChain) {
   for (var i = fromChain.length - 1; i >= 0; i--) {
     var card = fromChain[i];
-    var dx = oldPos.x, dy = game.height - 40 * i - CARD_HEIGHT;
+    var dx = oldPos.x, dy = game.height - MIN_Y_MOVE_HEIGHT * i - CARD_HEIGHT;
+    console.log('adjust ' + card.key + ' to:' + dx + ',' + dy);
     card.x = dx;
     card.y = dy;
     card.chain_idx = i;
     cards.bringToTop(card);
   }
 
-  if (fromChain == toChain) {
-    return;
+  if (fromChain != toChain) {
+    for (var i = toChain.length - 1; i >= 0; i--) {
+      var card = toChain[i];
+      var dx = passiveCard.x, dy = game.height - MIN_Y_MOVE_HEIGHT * i - CARD_HEIGHT;
+      card.x = dx;
+      card.y = dy;
+      card.chain_idx = i;
+      cards.bringToTop(card);
+    }
   }
 
-  for (var i = toChain.length - 1; i >= 0; i--) {
-    var card = toChain[i];
-    var dx = passiveCard.x, dy = game.height - 40 * i - CARD_HEIGHT;
-    console.log(card.key, dx, dy);
-    card.x = dx;
-    card.y = dy;
-    card.chain_idx = i;
-    cards.bringToTop(card);
+  /*当前字牌所在组只有一张时 重置位置*/
+  if (chain[activeCard.chain_id].length == 1) {
+    activeCard.y = game.height - CARD_HEIGHT;
   }
 }
 
 function swapChainCard(lcard, rcard) {
-  console.log('swap card');
+  if (lcard == rcard) return;
+
   var t_chain_id = lcard.chain_id;
   var t_l_card_chain_idx = lcard.chain_idx;
   var t_r_card_chain_idx = rcard.chain_idx;
 
-  console.log(t_l_card_chain_idx, t_r_card_chain_idx);
-
   chain[t_chain_id][t_l_card_chain_idx] = rcard;
   chain[t_chain_id][t_r_card_chain_idx] = lcard;
+}
 
-  adjustView(chain[t_chain_id], chain[t_chain_id]);
+function adjusctPassiveCard() {
+  var dy = Math.abs((game.height - CARD_HEIGHT) - activeCard.y);
+  var max_idx = chain[activeCard.chain_id].length - 1;
+  if (max_idx == 1) return;
+
+  var idx = Math.round(dy / MIN_Y_MOVE_HEIGHT);
+  idx = idx > max_idx ? max_idx : idx;
+
+  //console.log(dy, MIN_Y_MOVE_HEIGHT, idx);
+  passiveCard = chain[activeCard.chain_id][idx];
+  //console.log('adjust PassiveCard to ' + passiveCard.key);
 }
 
 
