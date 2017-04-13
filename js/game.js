@@ -39,7 +39,7 @@ playGame.prototype = {
     Phaser.ArrayUtils.shuffle(_cards);
     Phaser.ArrayUtils.shuffle(_cards);
 
-    _cards = _cards.slice(0, 19);
+    _cards = _cards.slice(0, 20);
 
     return sortCards(_cards);
   },
@@ -57,7 +57,7 @@ playGame.prototype = {
 
     /*给自己发20张牌*/
     for (var name in my_cards) {
-      var agroup = my_cards[name];
+      var agroup = my_cards[name]['els'];
       var g_y, chain_id = agroup[0].id;
 
       for (var i = agroup.length - 1; i >= 0; i--) {
@@ -254,45 +254,6 @@ function adjusctPassiveCard() {
   //console.log(dy, MIN_Y_MOVE_HEIGHT, idx);
   passiveCard = chain[activeCard.chain_id][idx];
   //console.log('adjust PassiveCard to ' + passiveCard.key);
-}
-
-/**
- * arr [{id, img}]
- */
-function sortCards(arr) {
-  var obj = {};
-
-  /*对子成组*/
-  for (var i = 0; i <= arr.length - 1; i++) {
-
-    var el = arr[i], key = el.name;
-
-    if (!obj[key]) {
-      obj[key] = [el];
-    }
-    else {
-      obj[key].push(el);         
-    }
-  } 
-
-  /*对子成话*/
-  for (var name in obj) {
-    var group = obj[name];
-    if (group.length == 2) {
-      var flag = name.slice(0,1);
-      var expect = (flag == 'd' ? 'x' : 'd') + name.slice(1);
-      
-      if (obj[expect] && obj[expect].length == 1) {
-        group.push(obj[expect][0]);
-        delete obj[expect][0];
-        delete obj[expect];
-      }
-    }
-  }
-
-  /*单个成话*/
-
-  return obj;
 }
 
 
