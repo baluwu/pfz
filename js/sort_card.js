@@ -28,9 +28,9 @@ function sortCards(arr) {
   singleToSentence(obj);
 
   /*对子成话*/
-  //coupleToSentence(obj);
+  coupleToSentence(obj);
   
-
+  /*大牌横小牌*/
   
   console.log(obj);
 
@@ -57,31 +57,40 @@ function coupleToSentence(obj) {
 
 /*3字牌成组,如2,7,10*/
 function make3CardToGroup(obj, e1, e2, e3) {
-  var fst = null, find = 0;
-  if (obj[e1] && obj[e1].type == 'SINGLE') { fst = e1; }
-  if (obj[e2] && obj[e2].type == 'SINGLE') {//或者是COUPLE 
-    if (!fst) fst = e2; 
-    else { 
-      obj[fst]['els'].push(obj[e2]['els'][0]);
-      obj[fst]['type'] = 'SENTENCE';
-      delete obj[e2]['els'][0];
-      delete obj[e2]['els'];
-      delete obj[e2];
-      find++;
-    } 
+  var fst = null, find = 0, e1_len = 0;
+
+  if (obj[e1]) { fst = e1;  e1_len = obj[e1]['els'].length; }
+
+  if (e1_len == 1) {
+      if (obj[e2] && obj[e2].els.length <= 2 && ( obj[e2].type == 'SENTENCE' || obj[e2].type == 'SINGLE')) {
+        if (!fst) fst = e2; 
+        else { 
+          obj[fst]['els'].push(obj[e2]['els'][0]);
+          obj[fst]['type'] = 'SENTENCE';
+          delete obj[e2]['els'][0];
+          delete obj[e2]['els'];
+          delete obj[e2];
+          find++;
+        } 
+
+        if (obj[fst]['els'].length == 3) return true;
+      }
+      if (obj[e3] && obj[e3].type == 'SINGLE') { 
+        if (fst) { 
+          obj[fst]['els'].push(obj[e3]['els'][0]);
+          obj[fst]['type'] = 'SENTENCE';
+          delete obj[e3]['els'][0];
+          delete obj[e3]['els'];
+          delete obj[e3];
+          find++;
+        } 
+      }
   }
-  if (obj[e3] && obj[e3].type == 'SINGLE') { 
-    if (fst) { 
-      obj[fst]['els'].push(obj[e3]['els'][0]);
-      obj[fst]['type'] = 'SENTENCE';
-      delete obj[e3]['els'][0];
-      delete obj[e3]['els'];
-      delete obj[e3];
-      find++;
-    } 
+  else if (e1_len == 2) {
+    //2,3 and 4   
   }
 
-  console.log(e1,e2,e3,find == 3 ? '成功' : '失败');
+  console.log(e1,e2,e3,find);
   return find == 3;
 }
 
@@ -100,7 +109,7 @@ function singleToSentence(obj) {
         }
 
         if (!succ && k - 2 > 0) {
-          make3CardToGroup(obj, f + (k - 2), f + (k - 1), el);
+          succ = make3CardToGroup(obj, f + (k - 2), f + (k - 1), el);
         }
 
         if (!succ && k + 1 <= 10 && k - 1 > 0) {
