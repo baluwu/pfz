@@ -17,7 +17,6 @@ function sortCards(arr) {
       obj[key].type = 'COUPLE';
     }
   } 
-
   /*有胡子的成话*/
   make3CardToGroup(obj, 'x2', 'x7', 'x10');
   make3CardToGroup(obj, 'x1', 'x2', 'x3');
@@ -26,15 +25,30 @@ function sortCards(arr) {
 
   /*单个成话*/
   singleToSentence(obj);
-
   /*对子成话*/
   coupleToSentence(obj);
-  
   /*大牌横小牌*/
-  
-  console.log(obj);
+  bigSmallToSentence(obj);
+
+  printLength(obj);
 
   return obj;
+}
+
+function bigSmallToSentence(obj) {
+  for (var name in obj) {
+    var group = obj[name];
+    if (group['type'] == 'SINGLE') {
+      var flag = name.slice(0,1);
+      var expect = (flag == 'd' ? 'x' : 'd') + name.slice(1);
+      
+      if (obj[expect] && obj[expect]['type'] == 'SINGLE') {
+        group['els'].push(obj[expect]['els'][0]);
+        group.type = 'SENTENCE';
+        delete obj[expect];
+      }
+    }
+  }
 }
 
 function coupleToSentence(obj) {
@@ -47,8 +61,6 @@ function coupleToSentence(obj) {
       if (obj[expect] && obj[expect]['type'] == 'SINGLE') {
         group['els'].push(obj[expect]['els'][0]);
         group.type = 'SENTENCE';
-        delete obj[expect]['els'][0];
-        delete obj[expect]['els'];
         delete obj[expect];
       }
     }
@@ -59,38 +71,26 @@ function coupleToSentence(obj) {
 function make3CardToGroup(obj, e1, e2, e3) {
   var fst = null, find = 0, e1_len = 0;
 
-  if (obj[e1]) { fst = e1;  e1_len = obj[e1]['els'].length; }
+  if (obj[e1] && obj[e1]['els'].length == 1) { fst = e1; }
 
-  if (e1_len == 1) {
-      if (obj[e2] && obj[e2].els.length <= 2 && ( obj[e2].type == 'SENTENCE' || obj[e2].type == 'SINGLE')) {
-        if (!fst) fst = e2; 
-        else { 
-          obj[fst]['els'].push(obj[e2]['els'][0]);
-          obj[fst]['type'] = 'SENTENCE';
-          delete obj[e2]['els'][0];
-          delete obj[e2]['els'];
-          delete obj[e2];
-          find++;
-        } 
-
-        if (obj[fst]['els'].length == 3) return true;
-      }
-      if (obj[e3] && obj[e3].type == 'SINGLE') { 
-        if (fst) { 
-          obj[fst]['els'].push(obj[e3]['els'][0]);
-          obj[fst]['type'] = 'SENTENCE';
-          delete obj[e3]['els'][0];
-          delete obj[e3]['els'];
-          delete obj[e3];
-          find++;
-        } 
-      }
+  if (obj[e2] && obj[e2].els.length == 1) {
+    if (!fst) fst = e2; 
+    else { 
+      obj[fst]['els'].push(obj[e2]['els'][0]);
+      obj[fst]['type'] = 'SENTENCE';
+      delete obj[e2];
+      find++;
+    } 
   }
-  else if (e1_len == 2) {
-    //2,3 and 4   
+  if (obj[e3] && obj[e3].type == 'SINGLE') { 
+    if (fst) { 
+      obj[fst]['els'].push(obj[e3]['els'][0]);
+      obj[fst]['type'] = 'SENTENCE';
+      delete obj[e3];
+      find++;
+    } 
   }
-
-  console.log(e1,e2,e3,find);
+  
   return find == 3;
 }
 
@@ -118,6 +118,18 @@ function singleToSentence(obj) {
       }
     }
   }
+}
+
+function printLength(obj) {
+  var len = 0;
+  for (var name in obj) {
+    var agroup = obj[name]['els'];
+    for (var i = 0; i < agroup.length; i++) {
+      len++;
+    }
+  }
+  
+  console.log('chain length: ' + len);
 }
 
 

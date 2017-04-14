@@ -5,7 +5,7 @@ var activeCard = null, passiveCard = null;
 var chain = {};
 var oldPos = null;
 
-var CARD_WIDTH = 53, CARD_HEIGHT = 60, MIN_Y_MOVE_HEIGHT = 50;
+var CARD_WIDTH = 50, CARD_HEIGHT = 50, MIN_Y_MOVE_HEIGHT = 46;
 
 window.onload = function() {
     game = new Phaser.Game(1280, 720);
@@ -50,25 +50,25 @@ playGame.prototype = {
     cards.enableBody = true;
     
     var my_cards = this._makeCards();
-    
     var scale = 0.5;
     var x = 10;
     var y = (game.height) - CARD_HEIGHT;
+    var group_index = 0;
 
     /*给自己发20张牌*/
     for (var name in my_cards) {
       var agroup = my_cards[name]['els'];
       var g_y, chain_id = agroup[0].id;
+      var g_x = this._getX(group_index++);
 
       for (var i = agroup.length - 1; i >= 0; i--) {
         var a_card = agroup[i];
         g_y = game.height - CARD_HEIGHT - i * MIN_Y_MOVE_HEIGHT;
-        var card = cards.create(x, g_y, a_card.name);
+        
+        var card = cards.create(g_x, g_y, a_card.name)
         card.scale.setTo(scale, scale); 
 
-        //card.body.gravity.y = 1000;  
         game.physics.arcade.enable(card);
-        //card.body.collideWorldBounds = true;
         card.inputEnabled = true;
         card.input.enableDrag();
         card.id = a_card.id;
@@ -80,7 +80,7 @@ playGame.prototype = {
         card.events.onInputUp.add(onDragEnd);
 
         if (chain[chain_id]) {
-          chain[chain_id].push(card);
+          chain[chain_id].unshift(card);
         }
         else {
           chain[chain_id] = [card];
@@ -89,6 +89,27 @@ playGame.prototype = {
         cards.bringToTop(card);
       }
       x += CARD_WIDTH;
+    }
+
+    console.log(chain);
+  },
+
+  _getX: function(i) {
+    var mid = (game.width >> 1) - (CARD_WIDTH >> 1);
+
+    if (i == 0) {
+      return mid;
+    }
+
+    var direct = i % 2;
+
+    //right
+    if (direct == 1) {
+      return mid + Math.ceil(i / 2) * CARD_WIDTH;
+    }
+    //left
+    else if (direct == 0) {
+      return mid - Math.ceil(i / 2) * CARD_WIDTH;
     }
   },
 
